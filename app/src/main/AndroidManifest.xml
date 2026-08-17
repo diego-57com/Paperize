@@ -11,6 +11,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Needed to list installed apps in the Music Wallpaper app picker. Play Store review
+         restricts this for public listings; it is fine for a personal/sideloaded build. -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
     <!-- WorkManager contributes this permission for optional network constraints. Paperize never
          schedules network-constrained work, so keep it out of the final manifest. -->
     <uses-permission
@@ -93,6 +98,18 @@
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Now Playing (Music) Wallpaper: reads active media sessions once notification
+             access is granted, and applies the current track's album art as wallpaper. -->
+        <service
+            android:name=".service.music.NowPlayingListenerService"
+            android:exported="true"
+            android:label="Paperize Now Playing"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
 
