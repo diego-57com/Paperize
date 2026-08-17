@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material.icons.filled.BatteryAlert
@@ -39,6 +40,7 @@ import com.anthonyla.paperize.core.util.BatteryOptimizationUtil.requestIgnoreBat
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPrivacy: () -> Unit,
+    onNavigateToMusicWallpaper: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
@@ -150,6 +152,42 @@ fun SettingsScreen(
 
                     Text(
                         text = stringResource(R.string.mode_switch_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(AppSpacing.extraLarge))
+
+            // Music Wallpaper Section (now-playing album art)
+            SectionHeader(
+                icon = Icons.Filled.MusicNote,
+                title = "Music Wallpaper"
+            )
+
+            Spacer(modifier = Modifier.height(AppSpacing.medium))
+
+            Card(
+                onClick = onNavigateToMusicWallpaper,
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(AppSpacing.large)
+                ) {
+                    Text(
+                        text = "Change wallpaper with now-playing music",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(AppSpacing.extraSmall))
+                    Text(
+                        text = "Choose exactly which apps are allowed to set their album art as your wallpaper.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
