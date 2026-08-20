@@ -200,7 +200,7 @@ class NowPlayingListenerService : NotificationListenerService() {
      * Paperize's normal Effects settings. Returns false (no-op) if Paperize's wallpaper
      * mode isn't STATIC, since a Live wallpaper would hide the result anyway.
      */
-    private fun applyToSystemWallpaper(source: Bitmap): Boolean {
+    private suspend fun applyToSystemWallpaper(source: Bitmap): Boolean {
         return try {
             val mode = try {
                 settingsRepository.getWallpaperMode()
