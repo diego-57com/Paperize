@@ -19,6 +19,7 @@ import com.anthonyla.paperize.presentation.common.navigation.util.exitTransition
 import com.anthonyla.paperize.presentation.screens.album_view.AlbumViewScreen
 import com.anthonyla.paperize.presentation.screens.folder_view.FolderViewScreen
 import com.anthonyla.paperize.presentation.screens.home.HomeScreen
+import com.anthonyla.paperize.presentation.screens.music_wallpaper.MusicGalleryScreen
 import com.anthonyla.paperize.presentation.screens.music_wallpaper.MusicWallpaperScreen
 import com.anthonyla.paperize.presentation.screens.notification.NotificationPermissionScreen
 import com.anthonyla.paperize.presentation.screens.privacy.PrivacyScreen
@@ -228,6 +229,19 @@ fun NavigationGraph(
             popExitTransition = exitBackward
         ) {
             MusicWallpaperScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToGallery = { navController.navigate(MusicGalleryRoute) }
+            )
+        }
+
+        // Music wallpaper gallery + default wallpaper picker
+        composable<MusicGalleryRoute>(
+            enterTransition = enterForward,
+            exitTransition = exitForward,
+            popEnterTransition = enterBackward,
+            popExitTransition = exitBackward
+        ) {
+            MusicGalleryScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
         }

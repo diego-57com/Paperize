@@ -38,3 +38,6 @@ object PrivacyRoute
 
 @Serializable
 object MusicWallpaperRoute
+
+@Serializable
+object MusicGalleryRoute
