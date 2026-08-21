@@ -27,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Detects the currently playing media session and, if the source app is in the user's
@@ -129,16 +130,20 @@ class NowPlayingListenerService : NotificationListenerService() {
 
     private fun handleMetadata(packageName: String, metadata: MediaMetadata?) {
         if (metadata == null) return
-        mainScope.launch(Dispatchers.IO) {
-            if (!preferences.getIsEnabledSnapshot()) return@launch
-            if (packageName !in preferences.getAllowedPackagesSnapshot()) return@launch
+        // Runs on Main (mainScope's default dispatcher) so stopWatchJob/lastAppliedKey are only
+        // ever touched from one thread; IO work is dispatched explicitly below.
+        mainScope.launch {
+            val enabled = withContext(Dispatchers.IO) { preferences.getIsEnabledSnapshot() }
+            if (!enabled) return@launch
+            val allowed = withContext(Dispatchers.IO) { preferences.getAllowedPackagesSnapshot() }
+            if (packageName !in allowed) return@launch
 
             val title = metadata.getString(MediaMetadata.METADATA_KEY_TITLE)
             val artist = metadata.getString(MediaMetadata.METADATA_KEY_ARTIST)
             val trackKey = "$packageName|$title|$artist"
             if (trackKey == lastAppliedKey) return@launch
 
-            val rawArt: Bitmap? = resolveArtwork(metadata)
+            val rawArt: Bitmap? = withContext(Dispatchers.IO) { resolveArtwork(metadata) }
             if (rawArt == null) {
                 Log.d(TAG, "No artwork (embedded or via URI) for $packageName - $title")
                 return@launch
@@ -148,9 +153,12 @@ class NowPlayingListenerService : NotificationListenerService() {
             stopWatchJob?.cancel()
             stopWatchJob = null
 
-            galleryRepository.saveCapture(rawArt, title, artist, packageName)
+            withContext(Dispatchers.IO) {
+                galleryRepository.saveCapture(rawArt, title, artist, packageName)
+            }
 
-            if (applyToSystemWallpaper(rawArt)) {
+            val applied = withContext(Dispatchers.IO) { applyToSystemWallpaper(rawArt) }
+            if (applied) {
                 lastAppliedKey = trackKey
                 Log.d(TAG, "Wallpaper updated from $packageName: $title")
             }
@@ -158,24 +166,33 @@ class NowPlayingListenerService : NotificationListenerService() {
     }
 
     private fun handlePlaybackState(packageName: String, state: PlaybackState?) {
-        mainScope.launch(Dispatchers.IO) {
-            if (!preferences.getIsEnabledSnapshot()) return@launch
-            if (packageName !in preferences.getAllowedPackagesSnapshot()) return@launch
+        mainScope.launch {
+            val enabled = withContext(Dispatchers.IO) { preferences.getIsEnabledSnapshot() }
+            if (!enabled) return@launch
+            val allowed = withContext(Dispatchers.IO) { preferences.getAllowedPackagesSnapshot() }
+            if (packageName !in allowed) return@launch
 
-            val isPlaying = state?.state == PlaybackState.STATE_PLAYING
-            if (isPlaying) {
-                stopWatchJob?.cancel()
-                stopWatchJob = null
-                return@launch
-            }
+            when (state?.state) {
+                PlaybackState.STATE_PLAYING -> {
+                    stopWatchJob?.cancel()
+                    stopWatchJob = null
+                }
 
-            // Not playing (paused/stopped/none/buffering-out): start a grace-period countdown
-            // before reverting, so brief pauses (e.g. skipping to the next track) don't flicker.
-            stopWatchJob?.cancel()
-            stopWatchJob = mainScope.launch(Dispatchers.IO) {
-                delay(STOP_GRACE_PERIOD_MS)
-                if (!preferences.getRevertToDefaultOnStopSnapshot()) return@launch
-                applyDefaultWallpaper()
+                // Only these are a real, deliberate stop. Transient/in-between states
+                // (buffering, connecting, seeking, skipping, fast-forward/rewind, error - which
+                // Spotify and others report routinely mid-song) are intentionally ignored below,
+                // so they neither start nor cancel the countdown.
+                PlaybackState.STATE_PAUSED, PlaybackState.STATE_STOPPED, PlaybackState.STATE_NONE, null -> {
+                    stopWatchJob?.cancel()
+                    stopWatchJob = mainScope.launch {
+                        delay(STOP_GRACE_PERIOD_MS)
+                        val revert = withContext(Dispatchers.IO) {
+                            preferences.getRevertToDefaultOnStopSnapshot()
+                        }
+                        if (!revert) return@launch
+                        withContext(Dispatchers.IO) { applyDefaultWallpaper() }
+                    }
+                }
             }
         }
     }
